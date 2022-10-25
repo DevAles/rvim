@@ -1,8 +1,35 @@
-use std::io::stdin;
-use std::io::Read;
+use crossterm::event;
+use crossterm::event::Event;
+use crossterm::event::KeyCode;
+use crossterm::event::KeyEvent;
+use crossterm::terminal;
+
+struct RawModeOn;
+
+impl Drop for RawModeOn {
+    fn drop(&mut self) {
+        terminal::disable_raw_mode().expect("Error turning off raw mode");
+    }
+}
 
 pub fn run() {
-    let mut buffer = [0; 1];
+    // If a RawModeOn variable goes out of scope, turn off raw mode to avoid keeping raw mode on if the program panics or something else
+    let _raw_mode_on = RawModeOn;
+    terminal::enable_raw_mode().expect("Error turning on raw mode");
 
-    while stdin().read(&mut buffer).expect("Failed to read line") == 1 && buffer[0] != b'q' {}
+    loop {
+        if let Event::Key(event) = event::read().expect("Failed to read line") {
+            match event {
+                KeyEvent {
+                    code: KeyCode::Char('q'),
+                    modifiers: event::KeyModifiers::NONE,
+                    ..
+                } => break,
+
+                _ => { /* todo */ }
+            }
+
+            println!("{:?}\r", event); //Print event
+        }
+    }
 }
