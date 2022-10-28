@@ -1,36 +1,28 @@
-use crossterm::event;
-use crossterm::event::Event;
-use crossterm::event::KeyCode;
-use crossterm::event::KeyEvent;
+pub mod mode;
+pub mod tools;
+
 use crossterm::terminal;
-
-struct RawModeOn;
-
-impl Drop for RawModeOn {
-    fn drop(&mut self) {
-        terminal::disable_raw_mode().expect("Error turning off raw mode");
-    }
-}
+use tools::{EventTrigger, KeyboardListener};
 
 pub fn run() -> crossterm::Result<()> {
-    // If a RawModeOn variable goes out of scope, turn off raw mode to avoid keeping raw mode on if the program panics or something else
-    let _raw_mode_on = RawModeOn;
+    let _raw_mode_on = mode::RawMode;
     terminal::enable_raw_mode()?;
 
     loop {
-        if let Event::Key(event) = event::read()? {
-            match event {
-                KeyEvent {
-                    code: KeyCode::Char('q'),
-                    modifiers: event::KeyModifiers::NONE,
-                    ..
-                } => break,
+        let key = KeyboardListener::on()?;
+        println!("{:?}\r", key);
 
-                _ => { /* todo */ }
-            }
-
-            println!("{:?}\r", event); // Print event
+        if !EventTrigger::on(key)? {
+            return Ok(())
         }
     }
-    Ok(())
+}
+
+#[cfg(test)]
+#[test]
+fn event_trigger() {
+    use crossterm::event::{ KeyEvent, KeyCode::Char, KeyModifiers, KeyEventKind::Press, KeyEventState };
+
+    let key = KeyEvent { code: Char('a'), modifiers: KeyModifiers::NONE, kind: Press, state: KeyEventState::NONE };
+    EventTrigger::on(key).unwrap();
 }
