@@ -12,13 +12,13 @@ impl Drop for RawModeOn {
     }
 }
 
-pub fn run() {
+pub fn run() -> crossterm::Result<()> {
     // If a RawModeOn variable goes out of scope, turn off raw mode to avoid keeping raw mode on if the program panics or something else
     let _raw_mode_on = RawModeOn;
-    terminal::enable_raw_mode().expect("Error turning on raw mode");
+    terminal::enable_raw_mode()?;
 
     loop {
-        if let Event::Key(event) = event::read().expect("Failed to read line") {
+        if let Event::Key(event) = event::read()? {
             match event {
                 KeyEvent {
                     code: KeyCode::Char('q'),
@@ -29,7 +29,8 @@ pub fn run() {
                 _ => { /* todo */ }
             }
 
-            println!("{:?}\r", event); //Print event
+            println!("{:?}\r", event); // Print event
         }
     }
+    Ok(())
 }
