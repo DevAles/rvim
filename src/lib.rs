@@ -1,30 +1,46 @@
 pub mod mode;
 pub mod tools;
+pub mod screen;
 
 use crossterm::terminal;
-use tools::{ event_trigger, keyboard_listener, screen };
+
+use tools::keyboard;
+use screen::Screen;
 
 pub fn run() -> crossterm::Result<()> {
-    screen::clear()?;
+    let mut screen = Screen::new()?;
+    screen.refresh()?;
+    screen.create_rows();
+
 
     let _raw_mode_on = mode::RawMode;
     terminal::enable_raw_mode()?;
 
     loop {
-        let key = keyboard_listener::on()?;
-        println!("{:?}\r", key);
+        let key = keyboard::listener()?;
 
-        if !event_trigger::on(key)? {
-            return Ok(())
+        println!("{:?}\r", key);
+        screen.refresh()?;
+
+        if !keyboard::event(key)? {
+            Screen::clear()?;
+            return Ok(());
         }
     }
 }
 
 #[cfg(test)]
 #[test]
-fn event_trigger() {
-    use crossterm::event::{ KeyEvent, KeyCode::Char, KeyModifiers, KeyEventKind::Press, KeyEventState };
+fn keyboard_event() {
+    use crossterm::event::{
+        KeyCode::Char, KeyEvent, KeyEventKind::Press, KeyEventState, KeyModifiers,
+    };
 
-    let key = KeyEvent { code: Char('a'), modifiers: KeyModifiers::NONE, kind: Press, state: KeyEventState::NONE };
-    event_trigger::on(key).unwrap();
+    let key = KeyEvent {
+        code: Char('a'),
+        modifiers: KeyModifiers::NONE,
+        kind: Press,
+        state: KeyEventState::NONE,
+    };
+    keyboard::event(key).unwrap();
 }
