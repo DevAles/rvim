@@ -1,17 +1,20 @@
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
+use lazy_static::lazy_static;
 
 use crate::screen;
 
-const MOVE_CURSOR_KEYS: [KeyCode; 8] = [
-    KeyCode::Up,
-    KeyCode::Down,
-    KeyCode::Left,
-    KeyCode::Right,
-    KeyCode::PageUp,
-    KeyCode::PageDown,
-    KeyCode::Home,
-    KeyCode::End,
-];
+lazy_static! {
+    static ref MOVE_CURSOR_KEYS: Vec<KeyCode> = vec![
+        KeyCode::Up,
+        KeyCode::Down,
+        KeyCode::Left,
+        KeyCode::Right,
+        KeyCode::PageUp,
+        KeyCode::PageDown,
+        KeyCode::Home,
+        KeyCode::End,
+    ];
+}
 
 pub struct Cursor {
     pub x: usize,
