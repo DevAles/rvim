@@ -1,20 +1,26 @@
 use std::io::{stdout, Write};
 
 use crossterm::{execute, queue, terminal, terminal::ClearType};
+use lazy_static::lazy_static;
 
-use crate::tools::cursor::CursorController;
+use crate::control_devices::Cursor;
 
 const RVIM_VERSION: f64 = 0.1;
+
+lazy_static! {
+    static ref TERMINAL_SIZE: (usize, usize) = terminal::size()
+        .map(|(x, y)| (x as usize, y as usize))
+        .unwrap();
+    pub static ref WIDTH: usize = TERMINAL_SIZE.0;
+    pub static ref HEIGHT: usize = TERMINAL_SIZE.1;
+}
 
 pub struct Buffer {
     content: String,
 }
 
 pub struct Screen {
-    pub width: usize,
-    pub height: usize,
     pub buffer: Buffer,
-    pub cursor: CursorController,
 }
 
 impl Buffer {
@@ -55,21 +61,12 @@ impl std::io::Write for Buffer {
 }
 
 impl Screen {
-    pub fn new() -> crossterm::Result<Self> {
-        Screen::clear()?;
+    pub fn new() -> Self {
+        Screen::clear().unwrap();
 
-        let (width, height) = terminal::size()
-            .map(|(x, y)| (x as usize, y as usize))
-            .unwrap();
         let buffer = Buffer::new();
-        let cursor = CursorController::new();
 
-        Ok(Screen {
-            width,
-            height,
-            buffer,
-            cursor,
-        })
+        Screen { buffer }
     }
 
     pub fn clear() -> crossterm::Result<()> {
@@ -79,7 +76,7 @@ impl Screen {
     }
 
     pub fn padding_message(&mut self, string: &str) {
-        let mut padding = (self.width - string.len()) / 2;
+        let mut padding = (*WIDTH - string.len()) / 2;
 
         if padding != 0 {
             self.buffer.push('~');
@@ -96,16 +93,16 @@ impl Screen {
     pub fn render_version_message(&mut self) {
         let mut version_message = format!("> rvim version {}", RVIM_VERSION);
 
-        if version_message.len() > self.width {
-            version_message.truncate(self.width);
+        if version_message.len() > *WIDTH {
+            version_message.truncate(*WIDTH);
         }
 
         self.padding_message(&version_message);
     }
 
     pub fn create_rows(&mut self) {
-        for i in 0..self.height {
-            if i == self.height / 3 {
+        for i in 0..*HEIGHT {
+            if i == *HEIGHT / 3 {
                 self.render_version_message();
             } else {
                 self.buffer.push('~');
@@ -113,28 +110,25 @@ impl Screen {
 
             queue!(self.buffer, terminal::Clear(ClearType::UntilNewLine)).unwrap();
 
-            if i < self.height - 1 {
+            if i < *WIDTH - 1 {
                 self.buffer.push_string("\r\n");
             }
         }
     }
 
-    pub fn refresh(&mut self) -> crossterm::Result<bool> {
-        // In refresh, this ClearType::Purge will avoid print the escape key.
+    pub fn refresh(&mut self, cursor: &Cursor) -> crossterm::Result<()> {
         queue!(
             self.buffer,
             crossterm::cursor::Hide,
-            crossterm::cursor::MoveTo(self.cursor.x as u16, self.cursor.y as u16)
+            crossterm::cursor::MoveTo(cursor.x as u16, cursor.y as u16)
         )?;
         self.create_rows();
 
         queue!(
             self.buffer,
             crossterm::cursor::Show,
-            crossterm::cursor::MoveTo(self.cursor.x as u16, self.cursor.x as u16)
+            crossterm::cursor::MoveTo(cursor.x as u16, cursor.y as u16)
         )?;
-        self.buffer.flush()?;
-
-        Ok(true)
+        self.buffer.flush()
     }
 }

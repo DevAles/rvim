@@ -1,32 +1,41 @@
+pub mod control_devices;
 pub mod mode;
-pub mod tools;
 pub mod screen;
 
 use crossterm::terminal;
 
-use tools::keyboard;
+use control_devices::Keyboard;
 use screen::Screen;
 
+struct App {
+    screen: Screen,
+    keyboard: Keyboard,
+}
+
+impl App {
+    fn new() -> Self {
+        App {
+            screen: Screen::new(),
+            keyboard: Keyboard::new(),
+        }
+    }
+
+    fn run(&mut self) -> crossterm::Result<bool> {
+        self.screen.refresh(&self.keyboard.cursor)?;
+
+        let key = self.keyboard.listener()?;
+        self.keyboard.event(key)
+    }
+}
+
 pub fn run() -> crossterm::Result<()> {
-    let mut screen = Screen::new()?;
-    screen.refresh()?;
-    screen.create_rows();
-
-
     let _raw_mode_on = mode::RawMode;
     terminal::enable_raw_mode()?;
 
-    loop {
-        let key = keyboard::listener()?;
+    let mut app = App::new();
+    while app.run()? {}
 
-        println!("{:?}\r", key);
-        screen.refresh()?;
-
-        if !keyboard::event(key)? {
-            Screen::clear()?;
-            return Ok(());
-        }
-    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -42,5 +51,7 @@ fn keyboard_event() {
         kind: Press,
         state: KeyEventState::NONE,
     };
-    keyboard::event(key).unwrap();
+
+    let mut keyboard = Keyboard::new();
+    keyboard.event(key).unwrap();
 }
